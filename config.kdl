@@ -1,0 +1,93 @@
+//mark platform - linux needs a path to the folder the FIFO is in, windows just needs to be there
+platform linux {
+    path "/usr/local/games/stepmania/Data/"
+}
+/-platform windows
+
+//define any persistent connections that need to be established on program launch
+//currently just websockets, possibly OSC or Matter or such later?
+connections {
+    //name (used for calling later) then address
+    websocket vtube-studio "ws://localhost:8001"
+}
+
+//initialization block for authenticating and storing tokens for APIs and such
+//JS doesn't let you do formatting on non-literal strongs so that'll be DIY whee
+//TODO: plugin/module system maybe?
+init {
+    ws vtube-studio {
+        (json)data {
+            apiName VTubeStudioPublicAPI
+            apiVersion "1.0"
+            requestID sm-weblights-token
+            messageType AuthenticationTokenRequest
+            data {
+                pluginName sm-weblights
+                pluginDeveloper LemmaEOF
+                pluginIcon "iVBORw0.........KGgoA="
+            }
+        }
+        //used to store data from the response
+        //TODO: how to detect which message is a response - KQL match maybe?
+        response {
+            store data.authenticationToken vts-token
+            //make another request with that new info
+            ws vtube-studio {
+                (json)data {
+                    apiName VTubeStudioPublicAPI
+                    apiVersion "1.0"
+                    requestID sm-weblights-authentication
+                    messageType AuthenticationRequest
+                    data {
+                        pluginName sm-weblights
+                        pluginDeveloper LemmaEOF
+                        authenticationToken "${vts-token}"
+                    }
+                }
+            }
+        }
+    }
+}
+
+//blocks for each byte of the lights update message
+//legal: `marquee`, `pXButtons`, `pXCabinet`, `pXPad`, `pXExtended1`, `pXExtended2`, `pXExtended3`
+//(swap `X` for either 1 or 2 depending on player)
+marquee {
+    //activate if any bits match
+    any 0b111100 {
+        http "https://localhost:7575/sample" method="PUT" ContentType="text/json" {
+            (json)body {
+                lights "${value}"
+            }
+        }
+    }
+    //activate if all bits match (plus a mask to check which ones we actually care about)
+    all 0b000011 mask=0b110011 {
+        //uses the name defined above
+        ws vtube-studio {
+            (json)data {
+                apiName VtubeStudioPublicAPI
+                apiVersion "1.0"
+                requestID sm-weblights-tint
+                messageType ColorTintRequest
+                data {
+                    colorTint {
+                        colorR 255
+                        colorG 150
+                        colorB 0
+                        colorA 255
+                        mixWithSceneLightingColor 1
+                    }
+                    artMeshMatcher {
+                        tintAll #false
+                        artMeshNumber 1 3 5
+                        nameExact eye_white_left eye_white_right
+                        (array)nameContains mouth
+                        (array)tagExact
+                        (array)tagContains MyTag
+                    }
+                }
+            }
+        }
+    }
+}

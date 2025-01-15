@@ -1,0 +1,15 @@
+{
+  "name": "sm-weblights",
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "^1.1.16"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@bgotink/kdl": "^0.3.1",
+    "stepmania-lights": "^0.0.4"
+  }
+}
